@@ -1,17 +1,17 @@
 from pyomo.environ import *
-import pandas as pd
 import numpy as np
 
 days = [0, 1, 2, 3, 4, 5, 6]
 shifts = [0, 1, 2, 3, 4, 5, 6]
+
 # Given demand by day
 demand = [16, 12, 18, 13, 15, 9, 7]
 
-# 7 shift types for employees in a week (3 consequtive days and 4 days off)
 num_shifts = len(days)
 num_days = len(shifts)
 
-# creating a shift pattern table with 0
+# 7 shift types for employees in a week (3 consequtive days and 4 days off)
+# creating a shift pattern table
 np_shift = np.empty(shape=(num_shifts,num_days))
 np_shift.fill(0)
 
@@ -19,12 +19,12 @@ np_shift.fill(0)
 for j in range(3):
     np_shift[0][j] = 1
 
-# Roll the 3 days shifts
+# Roll the 3 days shifts to create the shift schedule for the week
 for j in range(1,num_shifts):
     np_shift[j] = np.array(np.roll(np_shift[j-1],1,0))
 
-# Shift matrix
-print("Shift matrix\n",np_shift)
+# View the shift matrix
+print("\nShift schedule matrix\n",np_shift)
 
 # model formulation
 model = ConcreteModel()
@@ -41,6 +41,7 @@ for i in shifts:
         tot += model.emp[j]*np_shift[j][i]
     daily.append(tot)
 
+# Accounting for 3 continuous days shifts
 total_shift_staff = sum(daily)/3
 
 # objective minimize total shift staff
@@ -66,4 +67,18 @@ model.constraints.add(last_four <= fir_three)
 solver = SolverFactory('glpk')
 solver.solve(model)
 
-print("Optimized employees:",total_shift_staff())
+# Print outputs
+print("\nTotal optimized # Doctors:",total_shift_staff(),"\n")
+
+for j in days:
+    print(f"Doctors starting Day {j}:", model.emp[j].value)
+
+print("\n")
+
+for j in days:
+    tot = 0
+    for i in shifts:
+        tot += model.emp[i].value*np_shift[i][j]
+    print(f"Availability Day {j}:", tot, f", Demand Day {j}:", demand[j])
+
+print("\n")
